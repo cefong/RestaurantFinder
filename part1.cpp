@@ -104,6 +104,9 @@ int yegMiddleX, yegMiddleY;
 // coordinates of current point on map
 int yegCurrX, yegCurrY;
 
+// check if it is the first time
+bool firstTime = true;
+
 // forward declaration for redrawing cursor
 void redrawCursor(uint16_t colour);
  
@@ -471,14 +474,24 @@ void selectedRestPatch(RestDist array) {
 	int32_t selectedLon = currentRest.lon;
 	int32_t selectedLat = currentRest.lat;
 
-	yegCurrX = lon_to_x(selectedLon);
-	yegCurrY = lat_to_y(selectedLat);
+	int currRestX = lon_to_x(selectedLon);
+	int currRestY = lat_to_y(selectedLat);
 
 	// if the x coordinate of the restaurant is >210px from either edge and
 	// y coordinate is more that 160 px away from top and bottom, 
 	// implement the cursor being at the location of the restaurant, both of which display
 	// at the center of the screen (i.e. take lat-mapdisplayheight/2 and long - mapdisplayheight/2)
-
+	if (currRestX > 210 && currRestX < 1838 && currRestY > 160 && currRestY < 1888) {
+		// draw the patch of the map with the restaurant located in the middle
+		lcd_image_draw(&yegImage, &tft, 
+					   currRestX - 210, currRestY - 160,
+					   0, 0,
+					   MAP_DISP_WIDTH, MAP_DISP_HEIGHT);
+		// draw cursor in middle of screen
+	    cursorX = MAP_DISP_WIDTH/2;
+	    cursorY = MAP_DISP_HEIGHT/2;
+	    redrawCursor(TFT_RED);		
+	}
 	// if the x coordinate is within 210 px from either edgeand
 	// y coordinate is more than 160 px away from top and bottom
 	//implement cursor at location of restaurant but map patch drawn constrained to 
@@ -491,17 +504,23 @@ void selectedRestPatch(RestDist array) {
 void mode0() {
 	// clear screen
 	tft.fillScreen(TFT_BLACK);
-    // draws the centre of the Edmonton map, leaving the rightmost 60 columns black
-    lcd_image_draw(&yegImage, &tft, 
-    			   yegCurrX, yegCurrY,
-                   0, 0,
-                   MAP_DISP_WIDTH, MAP_DISP_HEIGHT);
 
-    // initial cursor position is the middle of the screen
-    cursorX = MAP_DISP_WIDTH/2;
-    cursorY = MAP_DISP_HEIGHT/2;
+	if (firstTime) {
+	    // draws the centre of the Edmonton map, leaving the rightmost 60 columns black
+	    lcd_image_draw(&yegImage, &tft, 
+	    			   yegCurrX, yegCurrY,
+	                   0, 0,
+	                   MAP_DISP_WIDTH, MAP_DISP_HEIGHT);
 
-    redrawCursor(TFT_RED);
+	    // initial cursor position is the middle of the screen
+	    cursorX = MAP_DISP_WIDTH/2;
+	    cursorY = MAP_DISP_HEIGHT/2;
+	    redrawCursor(TFT_RED);
+	    firstTime = false;
+	} else {
+		selectedRestPatch(rest_dist);
+	}
+
     while (digitalRead(JOYSTICK_SEL) == HIGH) {
     	joystickMode0();
     }
@@ -526,9 +545,6 @@ int main() {
 	while (true) {
 		mode0();
 	}
-	// when the user presses the joystick, enter mode 1
-	// replace the following with code that would display map
-	// etc, just filled screen for testing the joystick button
 
 	Serial.end();
 
