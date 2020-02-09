@@ -465,7 +465,7 @@ void joystickMode0() {
 }
 
 // draw patch of screen for restaurant
-void selectedRestPatch(RestDist array) {
+void selectedRestPatch(RestDist* array) {
 	// call this with rest_dist (array storing all restaurants and their distances and indices)
 	// need to get coordinates of selected restaurant
 	// then need to convert those lat/lon coordinates into x/y
