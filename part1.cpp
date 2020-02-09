@@ -462,7 +462,18 @@ void joystickMode0() {
 }
 
 // draw patch of screen for restaurant
-void selectedRestPatch() {
+void selectedRestPatch(RestDist array) {
+	// call this with rest_dist (array storing all restaurants and their distances and indices)
+	// need to get coordinates of selected restaurant
+	// then need to convert those lat/lon coordinates into x/y
+	Restaurant currentRest;
+	getRestaurant(array[selectedRest].index, &currentRest);
+	int32_t selectedLon = currentRest.lon;
+	int32_t selectedLat = currentRest.lat;
+
+	yegCurrX = lon_to_x(selectedLon);
+	yegCurrY = lat_to_y(selectedLat);
+
 	// if the x coordinate of the restaurant is >210px from either edge and
 	// y coordinate is more that 160 px away from top and bottom, 
 	// implement the cursor being at the location of the restaurant, both of which display
