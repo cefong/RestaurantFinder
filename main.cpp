@@ -1,9 +1,11 @@
-/**
- * Celine Fong 1580124
- * Claire Martin
- * CMPUT 275 Winter 2020
- * Major Assignment #1
- */
+// --------------------------------------------------------------
+// Names and IDs: Celine Fong (1580124), Claire Martin (1571140)
+// CMPUT 275 Winter 2020
+//
+// Major Assignment #1
+// Part 1: Simple Restaurant Finder
+// --------------------------------------------------------------
+
 
 #include <Arduino.h>
 #include <Adafruit_GFX.h>
@@ -85,7 +87,6 @@ TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
 Sd2Card card;
 
 // initialize and declare global variables and structs
-
 // global variables used exclusively in mode0
 
 // current cursor position on the display
@@ -103,10 +104,11 @@ int yegCurrX, yegCurrY;
 // notes that no mode switching has occurred yet
 bool firstTime = true;
 
+// notes whether the restaurant dots are drawn or not
+bool isDrawn = false;
+
 // forward declaration for redrawing cursor
 void redrawCursor(uint16_t colour);
-
-// global variables used in mode1
 
 // restaurant struct, from weekly exercise
 struct Restaurant {
@@ -117,13 +119,14 @@ struct Restaurant {
 };
 
 // restDist struct, stores index and distance from current 
-// cursor location. Can use index to pull info from corresponding
-// Restaurant struct
+// cursor location
+// can use index to pull info from corresponding Restaurant struct
 struct RestDist {
 	uint16_t index; // index of restaurant from 0 to NUM_RESTAURANTS-1
 	uint16_t dist; // Manhattan distance to cursor position
 };
 
+// global variables used in mode1
 // array containing 1066 RestDist structures
 RestDist rest_dist[NUM_RESTAURANTS];
 
@@ -131,14 +134,11 @@ RestDist rest_dist[NUM_RESTAURANTS];
 uint32_t oldBlock = 0;
 Restaurant restBlock[8];
 
-// selectedRest needs to change with joystick movement
+// defines the restaurant that is currently selected
 int selectedRest = 0;
-
-// functions used in mode1
 
 // These functions convert between x/y map position and lat/lon
 int32_t x_to_lon(int16_t x) {
-	// int32_t t = LON_WEST + (x)*(LON_EAST - LON_WEST)/MAP_WIDTH;
 	return map(x, 0, MAP_WIDTH, LON_WEST, LON_EAST);
 }
 
@@ -147,7 +147,6 @@ int32_t y_to_lat(int16_t y) {
 }
 
 int16_t lon_to_x(int32_t lon) {
-	// int32_t t = (lon - LON_WEST)*MAP_WIDTH/(LON_EAST - LON_WEST);
 	return map(lon, LON_WEST, LON_EAST, 0, MAP_WIDTH);
 }
 
@@ -166,7 +165,6 @@ int16_t lat_to_y(int32_t lat) {
 	Returns:
 		N/A
 */
-// fast getRestaurant from WE1
 void getRestaurant(int restIndex, Restaurant* restPtr) {
 	// determine block number from restIndex
 	uint32_t blockNum = REST_START_BLOCK + restIndex/8;
@@ -186,13 +184,13 @@ void getRestaurant(int restIndex, Restaurant* restPtr) {
 }
 
 /* 
-	Calculates Manhattan distance from cursor location
+	Calculates Manhattan distance between two points
 	
-	Arguments: 
-		x1 (int16_t): x coordinate of first location
-		x2 (int16_t): x coordinate of second location
-		y1 (int16_t): y coordinate of first location
-		y2 (int16_t): y coordinate of second location
+	Arguments:
+		x1 (int16_t): x coordinate of first point
+		x2 (int16_t): x coordinate of second point
+		y1 (int16_t): y coordinate of first point
+		y2 (int16_t): y coordinate of second point
 
 	Returns:
 		dist (int16_t): Manhattan distance between points
@@ -217,23 +215,15 @@ void getRestDist(RestDist* restDistArray, int16_t x, int16_t y) {
 	// load array of RestDist structures
 	Restaurant rest;
 	for (int i = 0; i < NUM_RESTAURANTS; i++) {
-		// load 1 restaurant from SD card
+		// load a restaurant from SD card
 		getRestaurant(i, &rest);
 		restDistArray[i].index = i;
-
 		// store index and distance as RestDist struct in rest_dist array
 		int32_t lat = rest.lat;
 		int32_t lon = rest.lon;
 		int16_t xPoint = lon_to_x(lon);
-		// Serial.println(rest.name);
-		// Serial.print("Lon: ");
-		// Serial.println(rest.lon);
-		// Serial.print("Longitude Converted: ");
-		// Serial.println(xPoint);
 		int16_t yPoint = lat_to_y(lat);
-		// Serial.print("Latitude Converted: ");
-		// Serial.println(yPoint);
-		// restDistArray[i].dist = manhattanDist(lon_to_x(rest.lon), x, lat_to_y(rest.lat), y);
+		// calculate manhattan distance and store in rest_dist
 		restDistArray[i].dist = manhattanDist(xPoint, x, yPoint, y);
 	}
 }
@@ -248,7 +238,6 @@ void getRestDist(RestDist* restDistArray, int16_t x, int16_t y) {
 	Returns:
 		N/A
 */
-// swaps two RestDist structures (used in insertion sort)
 void swap(RestDist &x,RestDist &y) {
 	RestDist temp = x; // stores x in a temporary variable
 	x = y; // puts y into x's previous memory address
@@ -274,7 +263,7 @@ void isort(RestDist* distArray, int length) {
 }
 
 /* 
-	Displays the initial list of restaurants
+	Displays the list of closest restaurants to the cursor coordinates
 	
 	Arguments: 
 		restArray (RestDist*): Array of restDist structs
@@ -292,7 +281,6 @@ void displayNames(RestDist* restArray) {
 		if (i != 0) { // not highlighted
 			tft.setTextColor(0xFFFF, 0x0000);
 		} else { // highlighted
-			// black characters on white background
 			tft.setTextColor(0x0000, 0xFFFF);
 		}
 		tft.print(r.name);
@@ -374,18 +362,17 @@ void mode0();
 		N/A
 */
 void mode1() {
-	// 1. load restaurant data into array of RestDist structs
-	// calculate manhattan distance for each restaurant
+	// load restaurant data into array of RestDist structs
 	getRestDist(rest_dist, yegCurrX + cursorX, yegCurrY + cursorY);
 	Serial.println("Created RestDist");
-	// 2. sort array of RestDist structs by distance
+	// sort array of RestDist structs by distance
 	isort(rest_dist, NUM_RESTAURANTS);
 	Serial.println("Sorted");
-	// 3. display the list on the screen
+	// display the list on the screen
 	displayNames(rest_dist);
 	Serial.println("Displayed");
-	// 4. if joystick is moved, scroll through list
-	// 5. if joystick is pressed, go back to map display
+	// if joystick is moved, scroll through list
+	// if joystick is pressed, go back to map display
 	while (digitalRead(JOYSTICK_SEL) == HIGH) {
 		joystickMode1();
 	}
@@ -457,27 +444,35 @@ void drawNextPatch(int xDirection, int yDirection) {
 
 }
 
+/*
+	Draws a new patch of the map based on the cursor position
+
+	Arguments:
+		N/A
+
+	Returns:
+		N/A
+*/
 void selectedRestPatch() {
-	// call this with rest_dist (array storing all restaurants and their distances and indices)
-	// need to get coordinates of selected restaurant
-	// then need to convert those lat/lon coordinates into x/y
+	// get coordinates of selected restaurant
+	// then convert those lat/lon coordinates into x/y
 	Restaurant currentRest;
 	getRestaurant(rest_dist[selectedRest].index, &currentRest);
 	int32_t selectedLon = currentRest.lon;
 	int32_t selectedLat = currentRest.lat;
 
+	// values of coordinates on map from 0-2048
 	int currRestX = lon_to_x(selectedLon);
 	int currRestY = lat_to_y(selectedLat);
 
+	// define the middle width/height of display for use in the following functions
 	int dispMiddleWidth = MAP_DISP_WIDTH/2;
 	int dispMiddleHeight = MAP_DISP_HEIGHT/2;
 
-	// if the x coordinate of the restaurant is >210px from either edge and
-	// y coordinate is more that 160 px away from top and bottom, 
-	// implement the cursor being at the location of the restaurant, both of which display
-	// at the center of the screen (i.e. take lat-mapdisplayheight/2 and long - mapdisplayheight/2)
-	if (currRestX > dispMiddleWidth && currRestX < MAP_WIDTH - dispMiddleWidth 
-		&& currRestY > dispMiddleHeight && currRestY < MAP_HEIGHT - dispMiddleHeight) {
+	// if x and y coordinates are within constraints (not too close to edges)
+	// 'normal' case
+	if ((currRestX > dispMiddleWidth) && (currRestX < MAP_WIDTH - dispMiddleWidth) 
+		&& (currRestY > dispMiddleHeight) && (currRestY < MAP_HEIGHT - dispMiddleHeight)) {
 
 		yegCurrX = currRestX - dispMiddleWidth;
 		yegCurrY = currRestY - dispMiddleHeight;
@@ -486,9 +481,7 @@ void selectedRestPatch() {
 	    cursorX = dispMiddleWidth;
 	    cursorY = dispMiddleHeight;
 	}
-	// if not in range of map,
-	// put cursor on closest location to restaurant. if it is outside x constraint, keep the
-	// latitude and put cursor on edge of screen, vice versa.
+	// if not in range of map
 	else if (currRestX < 0 || currRestX > MAP_WIDTH || currRestY < 0 || currRestY > MAP_HEIGHT) {
 		// location of cursor
 		if (currRestX < 0 || currRestX > MAP_WIDTH) {
@@ -500,31 +493,16 @@ void selectedRestPatch() {
 		}
 
 		// draw map
-		yegCurrX = constrain(currRestX - dispMiddleWidth, 0, MAP_WIDTH);
-		yegCurrY = constrain(currRestY - dispMiddleHeight, 0, MAP_HEIGHT);
+		yegCurrX = constrain(currRestX, 0, YEG_X_MAX);
+		yegCurrY = constrain(currRestY, 0, YEG_Y_MAX);
 	}
-	// if the x coordinate is within 210 px from either edgeand
-	// y coordinate is more than 160 px away from top and bottom
-	//implement cursor at location of restaurant but map patch drawn constrained to 
-	// mapheight - mapdisplay height, and mapwidth - mapdisplaywidth
+	// if the x coordinate is close to edges
 	else {
-		// location of cursor 
-		if (currRestX < dispMiddleWidth) {
-			cursorX = currRestX;
-		} else if (currRestX > MAP_WIDTH - dispMiddleWidth) {
-			cursorX = currRestX - MAP_WIDTH + dispMiddleWidth; 
-		}
+		cursorX = constrain(currRestX, 0, CURSOR_X_MAX);
+		cursorY = constrain(currRestY, 0, CURSOR_Y_MAX);
 
-		if (currRestY < dispMiddleHeight) {
-			cursorY = currRestY;
-		} else if (currRestY > MAP_HEIGHT - dispMiddleHeight) {
-			cursorY = currRestY - MAP_WIDTH + dispMiddleHeight;
-		}
-
-		currRestX = constrain(currRestX, dispMiddleWidth, MAP_DISP_WIDTH - dispMiddleWidth);
-		currRestY = constrain(currRestY, dispMiddleHeight, MAP_DISP_HEIGHT - dispMiddleHeight);
-		yegCurrX = currRestX - dispMiddleWidth;
-		yegCurrY = currRestY - dispMiddleHeight;
+		yegCurrX = constrain(currRestX, 0, YEG_X_MAX);
+		yegCurrY = constrain(currRestY, 0, YEG_Y_MAX);
 	}
 
 	// draw the patch of the map with the restaurant located in the middle
@@ -539,6 +517,7 @@ void selectedRestPatch() {
 
 // forward declaration
 void restaurantDraw();
+void reDrawDots();
 
 /*
 	Process touchscreen input
@@ -561,10 +540,17 @@ void processTouch() {
 		// if it is not, exit the function
 		return;
 	}
+	// if dots are not drawn, draw them
+	// if dots are drawn, erase them and redraw map sections
+	if (!isDrawn) {
+		restaurantDraw();
+		isDrawn = true;
+	} else {
+		reDrawDots();
+		isDrawn = false;
+	}
 
-	restaurantDraw();
-
-	delay(200);
+	redrawCursor(TFT_RED);
 }
 
 /* 
@@ -584,12 +570,12 @@ void joystickMode0() {
     prevX = cursorX;
     prevY = cursorY;
 
-    // now move the cursor
+    // change cursorX and cursorY when joystick is moved
     if (yVal < (JOY_CENTER - JOY_DEADZONE)) {
       if (yVal < (JOY_CENTER - JOY_DEADZONE - BUFFER)) {
         cursorY -= 5;
       }
-      cursorY -= 1; // decrease the y coordinate of the cursor
+      cursorY -= 1;
     }
     else if (yVal > JOY_CENTER + JOY_DEADZONE) {
       if (yVal > (JOY_CENTER + JOY_DEADZONE + BUFFER)) {
@@ -597,8 +583,6 @@ void joystickMode0() {
       }
       cursorY += 1;
     }
-
-    // remember the x-reading increases as we push left
     if (xVal > JOY_CENTER + JOY_DEADZONE) {
       if (xVal > JOY_CENTER + JOY_DEADZONE + BUFFER) {
         cursorX -= 5;
@@ -647,18 +631,49 @@ void joystickMode0() {
 		N/A
 */
 void restaurantDraw() {
-	for (int i = 0; i < 20; i++) {
+	// ensure rest_dist is populated
+	getRestDist(rest_dist, yegCurrX + cursorX, yegCurrY + cursorY);
+	for (int i = 0; i < NUM_RESTAURANTS; i++) {
+		Restaurant currentDrawRest;
+		// get latitude and longitude of each restaurant
+		getRestaurant(rest_dist[i].index, &currentDrawRest);
+		int32_t selectedDrawLon = currentDrawRest.lon;
+		int32_t selectedDrawLat = currentDrawRest.lat;
+		int currDrawRestX = lon_to_x(selectedDrawLon);
+		int currDrawRestY = lat_to_y(selectedDrawLat);
+		// only draw the circles if the restaurant is within the map range
+		if (currDrawRestX > yegCurrX + 3 && currDrawRestX < yegCurrX + MAP_DISP_WIDTH - 3
+			&& currDrawRestY > yegCurrY + 3 && currDrawRestY < yegCurrY + MAP_DISP_HEIGHT - 3) {
+			tft.fillCircle(currDrawRestX - yegCurrX, currDrawRestY - yegCurrY, 3, TFT_BLUE);
+		}		
+	}
+}
+
+/* 
+	Redraws the map over the restaurant points
+
+	Arguments: 
+		N/A
+
+	Returns:
+		N/A
+*/
+void reDrawDots() {
+	for (int i = 0; i < NUM_RESTAURANTS; i++) {
 		Restaurant currentDrawRest;
 		getRestaurant(rest_dist[i].index, &currentDrawRest);
 		int32_t selectedDrawLon = currentDrawRest.lon;
 		int32_t selectedDrawLat = currentDrawRest.lat;
 		int currDrawRestX = lon_to_x(selectedDrawLon);
-		int currDrawRestY = lat_to_y(selectedDrawLat);		
-		tft.fillCircle(currDrawRestX - yegCurrX, currDrawRestY - yegCurrY, 5, TFT_RED);
-		Serial.println(currentDrawRest.name);
-		Serial.print("Distance");
-		Serial.println(rest_dist[i].dist);
-		Serial.println("drew a restaurant");
+		int currDrawRestY = lat_to_y(selectedDrawLat);
+		if (currDrawRestX > yegCurrX + 3 && currDrawRestX < yegCurrX + MAP_DISP_WIDTH - 5
+			&& currDrawRestY > yegCurrY + 3 && currDrawRestY < yegCurrY + MAP_DISP_HEIGHT - 3) {
+			// draw the patch of the map covering the circle
+			lcd_image_draw(&yegImage, &tft, 
+				   currDrawRestX - 3, currDrawRestY - 3,
+				   currDrawRestX - yegCurrX - 3, currDrawRestY - yegCurrY - 3,
+				   7, 7);
+		}		
 	}
 }
 
@@ -682,10 +697,10 @@ void mode0() {
     	processTouch();
     }
 
+    isDrawn = false;
     selectedRest = 0;
     mode1();
 }
-
 
 void setup() {
 	init();
