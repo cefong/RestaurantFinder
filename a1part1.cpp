@@ -118,9 +118,7 @@ struct Restaurant {
 	char name[55]; // alread null terminated in SD card
 };
 
-// restDist struct, stores index and distance from current 
-// cursor location
-// can use index to pull info from corresponding Restaurant struct
+// restDist struct, stores index and distance from current cursor location
 struct RestDist {
 	uint16_t index; // index of restaurant from 0 to NUM_RESTAURANTS-1
 	uint16_t dist; // Manhattan distance to cursor position
@@ -130,14 +128,14 @@ struct RestDist {
 // array containing 1066 RestDist structures
 RestDist rest_dist[NUM_RESTAURANTS];
 
-// Initialize global variables oldBlock and restBlock used in the fast method
+// initialize global variables oldBlock and restBlock used in the fast method
 uint32_t oldBlock = 0;
 Restaurant restBlock[8];
 
 // defines the restaurant that is currently selected
 int selectedRest = 0;
 
-// These functions convert between x/y map position and lat/lon
+// these functions convert between x/y map position and lat/lon
 int32_t x_to_lon(int16_t x) {
 	return map(x, 0, MAP_WIDTH, LON_WEST, LON_EAST);
 }
@@ -161,9 +159,6 @@ int16_t lat_to_y(int32_t lat) {
 	Arguments:
 		restIndex (int): The index of the restaurant (0 to 1065)
 		restPtr (Restaurant*): Points to the restaurant address
-
-	Returns:
-		N/A
 */
 void getRestaurant(int restIndex, Restaurant* restPtr) {
 	// determine block number from restIndex
@@ -234,9 +229,6 @@ void getRestDist(RestDist* restDistArray, int16_t x, int16_t y) {
 	Arguments:
 		x (RestDist&): pass-by-reference to x coordinate of restaurant
 		y (RestDist&): pass-by-reference to y coordinate of restaurant
-
-	Returns:
-		N/A
 */
 void swap(RestDist &x,RestDist &y) {
 	RestDist temp = x; // stores x in a temporary variable
@@ -250,9 +242,6 @@ void swap(RestDist &x,RestDist &y) {
 	Arguments:
 		distArray (RestDist*): declares a pointer to array storing index and distances of restaurants
 		length (int): number of restaurants stored in array
-
-	Returns: 
-		N/A
 */
 void isort(RestDist* distArray, int length) {
 	for (int i = 1; i < length; ++i) {
@@ -267,15 +256,13 @@ void isort(RestDist* distArray, int length) {
 	
 	Arguments: 
 		restArray (RestDist*): Array of restDist structs
-
-	Returns:
-		N/A
 */
 void displayNames(RestDist* restArray) {
 	tft.fillScreen(0);
 	tft.setCursor(0,0);
 
 	for (int16_t i = 0; i < 21; i++) {
+		tft.setCursor(0,i*16 - i);
 		Restaurant r;
 		getRestaurant(restArray[i].index, &r);
 		if (i != 0) { // not highlighted
@@ -284,7 +271,6 @@ void displayNames(RestDist* restArray) {
 			tft.setTextColor(0x0000, 0xFFFF);
 		}
 		tft.print(r.name);
-		tft.print("\n");
 	}
 	tft.print("\n");
 }
@@ -295,9 +281,6 @@ void displayNames(RestDist* restArray) {
 	Arguments:
 		restArray (RestDist*): array of RestDist structs
 		x (int): index of current selected restaurant
-
-	Return:
-		N/A
 */
 void moveHighlight(RestDist* restArray, int x) {
 	// get info for old restaurant
@@ -319,12 +302,6 @@ void moveHighlight(RestDist* restArray, int x) {
 
 /*
 	Processes Joystick input and controls the cursor accordingly
-
-	Arguments:
-		N/A
-
-	Returns: 
-		N/A
 */
 void joystickMode1() {
 	int prevRest = selectedRest;
@@ -354,12 +331,6 @@ void mode0();
 
 /*
 	Implementation of mode1 as specified in assignment description
-
-	Arguments:
-		N/A
-
-	Returns:
-		N/A
 */
 void mode1() {
 	// load restaurant data into array of RestDist structs
@@ -384,9 +355,6 @@ void mode1() {
 
 	Arguments: 
 		colour (uint16_t): the desired TFT color
-
-	Returns: 
-		N/A
 */
 void redrawCursor(uint16_t colour) {
   tft.fillRect(cursorX - CURSOR_SIZE/2, cursorY - CURSOR_SIZE/2,
@@ -395,12 +363,6 @@ void redrawCursor(uint16_t colour) {
 
 /*
 	Redraws portion of map that cursor has just left to prevent black trail
-
-	Arguments:
-		N/A
-
-	Returns: 
-		N/a
 */
 void redrawMap() {
     int adjustX = prevX - CURSOR_SIZE/2;
@@ -418,9 +380,6 @@ void redrawMap() {
 	Arguments:
 		xDirection (int): Should be either 1, meaning right, -1, meaning left, or 0 meaning no change
 		yDirection (int): Should be either 1, meaning down, or -1, meaning up, or 0 meaning no change
-	
-	Returns:
-		N/A
 */
 void drawNextPatch(int xDirection, int yDirection) {
 
@@ -446,12 +405,6 @@ void drawNextPatch(int xDirection, int yDirection) {
 
 /*
 	Draws a new patch of the map based on the cursor position
-
-	Arguments:
-		N/A
-
-	Returns:
-		N/A
 */
 void selectedRestPatch() {
 	// get coordinates of selected restaurant
@@ -520,13 +473,7 @@ void restaurantDraw();
 void reDrawDots();
 
 /*
-	Process touchscreen input
-
-	Arguments:
-		N/A
-
-	Returns:
-		N/A
+	Processes touchscreen input
 */
 void processTouch() {
 	TSPoint touch = ts.getPoint();
@@ -555,12 +502,6 @@ void processTouch() {
 
 /* 
 	Processes joystick input for mode 0
-
-	Arguments: 
-		N/A
-
-	Returns: 
-		N/A
 */
 void joystickMode0() {
     int xVal = analogRead(JOYSTICK_HORIZ);
@@ -623,12 +564,6 @@ void joystickMode0() {
 
 /* 
 	Draws a point where each restaurant in range is located
-
-	Arguments: 
-		N/A
-
-	Returns:
-		N/A
 */
 void restaurantDraw() {
 	// ensure rest_dist is populated
@@ -641,6 +576,7 @@ void restaurantDraw() {
 		int32_t selectedDrawLat = currentDrawRest.lat;
 		int currDrawRestX = lon_to_x(selectedDrawLon);
 		int currDrawRestY = lat_to_y(selectedDrawLat);
+
 		// only draw the circles if the restaurant is within the map range
 		if (currDrawRestX > yegCurrX + 3 && currDrawRestX < yegCurrX + MAP_DISP_WIDTH - 3
 			&& currDrawRestY > yegCurrY + 3 && currDrawRestY < yegCurrY + MAP_DISP_HEIGHT - 3) {
@@ -651,12 +587,6 @@ void restaurantDraw() {
 
 /* 
 	Redraws the map over the restaurant points
-
-	Arguments: 
-		N/A
-
-	Returns:
-		N/A
 */
 void reDrawDots() {
 	for (int i = 0; i < NUM_RESTAURANTS; i++) {
@@ -666,6 +596,7 @@ void reDrawDots() {
 		int32_t selectedDrawLat = currentDrawRest.lat;
 		int currDrawRestX = lon_to_x(selectedDrawLon);
 		int currDrawRestY = lat_to_y(selectedDrawLat);
+
 		if (currDrawRestX > yegCurrX + 3 && currDrawRestX < yegCurrX + MAP_DISP_WIDTH - 5
 			&& currDrawRestY > yegCurrY + 3 && currDrawRestY < yegCurrY + MAP_DISP_HEIGHT - 3) {
 			// draw the patch of the map covering the circle
@@ -679,12 +610,6 @@ void reDrawDots() {
 
 /*
 	Implementation of mode 0 as specified in the assignment description
-
-	Arguments:
-		N/A
-
-	Returns:
-		N/A
 */ 
 void mode0() {
 	// clear screen
